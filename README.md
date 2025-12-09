@@ -897,7 +897,7 @@ GNU Affero General Public License v3.0 - 详见 [LICENSE](LICENSE) 文件。
 
 感谢以下项目提供的API服务：
 
-- [FAN Studio](https://fanstudio.tech/) - 提供多源灾害数据。
+- [FAN Studio](https://api.fanstudio.tech/) - 提供多源灾害数据。
 - [P2P地震情報](https://www.p2pquake.net/) - 提供日本地震信息。
 - [Wolfx](https://wolfx.jp/) - 提供地震API服务。
 - [Global Quake](https://globalquake.net/) - 提供全球地震监测。
