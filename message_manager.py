@@ -56,8 +56,9 @@ class MessagePushManager:
         # 阈值配置
         self.thresholds = config.get("earthquake_thresholds", {})
 
-        # 省份白名单配置
-        self.province_whitelist = config.get("province_whitelist", [])
+        # 省份白名单配置（分为地震/海啸和气象两种）
+        self.earthquake_province_whitelist = config.get("earthquake_province_whitelist", [])
+        self.weather_province_whitelist = config.get("weather_province_whitelist", [])
 
         # 目标会话
         self.target_sessions = self._parse_target_sessions()
@@ -375,30 +376,38 @@ class MessagePushManager:
 
     def _check_province_whitelist(self, event: DisasterEvent) -> bool:
         """检查省份白名单 - 如果配置了白名单，只推送白名单中省份的消息"""
+        # 根据事件类型选择对应的白名单
+        if isinstance(event.data, WeatherAlarmData):
+            whitelist = self.weather_province_whitelist
+            event_type = "气象预警"
+        else:  # EarthquakeData 和 TsunamiData
+            whitelist = self.earthquake_province_whitelist
+            event_type = "地震/海啸"
+        
         # 如果白名单为空，不进行过滤
-        if not self.province_whitelist:
+        if not whitelist:
             return True
 
         # 提取省份信息
         province = self._extract_province(event)
         
-        # 如果无法提取省份信息，默认通过（避免误过滤）
+        # 如果无法提取省份信息，在白名单启用时默认过滤（避免推送国外事件）
         if not province:
-            logger.debug(
-                f"[灾害预警] 事件 {event.id} 无法提取省份信息，默认通过白名单检查"
+            logger.info(
+                f"[灾害预警] {event_type}事件 {event.id} 无法提取省份信息，白名单已启用，默认过滤"
             )
-            return True
+            return False
 
         # 检查省份是否在白名单中（支持模糊匹配）
-        for allowed_province in self.province_whitelist:
+        for allowed_province in whitelist:
             if allowed_province in province or province in allowed_province:
                 logger.debug(
-                    f"[灾害预警] 事件 {event.id} 省份 '{province}' 在白名单中，通过检查"
+                    f"[灾害预警] {event_type}事件 {event.id} 省份 '{province}' 在白名单中，通过检查"
                 )
                 return True
 
         logger.info(
-            f"[灾害预警] 事件 {event.id} 省份 '{province}' 不在白名单 {self.province_whitelist} 中，过滤"
+            f"[灾害预警] {event_type}事件 {event.id} 省份 '{province}' 不在白名单 {whitelist} 中，过滤"
         )
         return False
 

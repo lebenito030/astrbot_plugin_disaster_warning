@@ -82,10 +82,14 @@ class DisasterWarningPlugin(Star):
 • /灾害预警日志 - 查看原始消息日志统计
 • /灾害预警日志开关 - 开关原始消息日志记录
 • /灾害预警日志清除 - 清除所有原始消息日志
-• /灾害预警白名单 查看 - 查看省份白名单
-• /灾害预警白名单 添加 [省份] - 添加省份到白名单
-• /灾害预警白名单 删除 [省份] - 从白名单删除省份
-• /灾害预警白名单 清空 - 清空省份白名单
+• /灾害预警地震白名单 查看 - 查看地震/海啸省份白名单
+• /灾害预警地震白名单 添加 [省份] - 添加省份到地震/海啸白名单
+• /灾害预警地震白名单 删除 [省份] - 从地震/海啸白名单删除省份
+• /灾害预警地震白名单 清空 - 清空地震/海啸白名单
+• /灾害预警气象白名单 查看 - 查看气象预警省份白名单
+• /灾害预警气象白名单 添加 [省份] - 添加省份到气象白名单
+• /灾害预警气象白名单 删除 [省份] - 从气象白名单删除省份
+• /灾害预警气象白名单 清空 - 清空气象白名单
 • /灾害预警帮助 - 显示此帮助信息
 
 ⚙️ 配置说明：
@@ -94,7 +98,7 @@ class DisasterWarningPlugin(Star):
 • 推送阈值设置（震级、烈度等）
 • 频率控制（报数控制）
 • 目标群号设置
-• 省份白名单过滤
+• 省份白名单过滤（地震/海啸和气象分开配置）
 • 消息过滤（心跳包、P2P节点状态、重复事件等）
 
 🔧 注意事项：
@@ -102,7 +106,8 @@ class DisasterWarningPlugin(Star):
 • 插件会自动过滤低于阈值的灾害信息
 • 支持多数据源实时推送
 • 新增智能消息过滤功能，减少日志噪音
-• 省份白名单可用于只推送特定地区的预警"""
+• 地震/海啸和气象可分别配置白名单
+• 白名单启用时，无法识别省份的事件（如国外地震）将被过滤"""
 
         yield event.plain_result(help_text)
 
@@ -450,58 +455,56 @@ class DisasterWarningPlugin(Star):
             logger.error(f"[灾害预警] 获取去重统计失败: {e}")
             yield event.plain_result(f"❌ 获取去重统计失败: {str(e)}")
 
-    @filter.command_group("灾害预警白名单")
-    async def province_whitelist(self, event: AstrMessageEvent):
-        """省份白名单管理"""
+    @filter.command_group("灾害预警地震白名单")
+    async def earthquake_whitelist(self, event: AstrMessageEvent):
+        """地震/海啸省份白名单管理"""
         pass
 
-    @province_whitelist.command("查看")
-    async def view_whitelist(self, event: AstrMessageEvent):
-        """查看当前省份白名单"""
+    @earthquake_whitelist.command("查看")
+    async def view_earthquake_whitelist(self, event: AstrMessageEvent):
+        """查看地震/海啸省份白名单"""
         try:
-            whitelist = self.config.get("province_whitelist", [])
+            whitelist = self.config.get("earthquake_province_whitelist", [])
             
             if not whitelist:
                 yield event.plain_result(
-                    "📋 省份白名单状态：未启用\n\n"
-                    "当前不进行省份过滤，推送所有省份的预警消息。\n\n"
+                    "📋 地震/海啸白名单状态：未启用\n\n"
+                    "当前不进行省份过滤，推送所有省份的地震和海啸预警。\n\n"
                     "💡 提示：\n"
-                    "• 使用 /灾害预警白名单 添加 [省份] 来添加省份\n"
-                    "• 例如：/灾害预警白名单 添加 四川"
+                    "• 使用 /灾害预警地震白名单 添加 [省份] 来添加省份\n"
+                    "• 例如：/灾害预警地震白名单 添加 四川\n"
+                    "• 白名单启用后，无法识别省份的事件（如国外地震）将被过滤"
                 )
             else:
-                whitelist_text = "📋 省份白名单\n\n"
+                whitelist_text = "📋 地震/海啸省份白名单\n\n"
                 whitelist_text += f"✅ 白名单已启用，当前有 {len(whitelist)} 个省份：\n\n"
                 for i, province in enumerate(whitelist, 1):
                     whitelist_text += f"  {i}. {province}\n"
                 whitelist_text += "\n💡 说明：\n"
-                whitelist_text += "• 只推送白名单中省份的预警消息\n"
-                whitelist_text += "• 无法提取省份信息的预警默认通过"
+                whitelist_text += "• 只推送白名单中省份的地震和海啸预警\n"
+                whitelist_text += "• 无法识别省份的事件（如国外地震）将被过滤"
                 
                 yield event.plain_result(whitelist_text)
 
         except Exception as e:
-            logger.error(f"[灾害预警] 查看白名单失败: {e}")
-            yield event.plain_result(f"❌ 查看白名单失败: {str(e)}")
+            logger.error(f"[灾害预警] 查看地震白名单失败: {e}")
+            yield event.plain_result(f"❌ 查看地震白名单失败: {str(e)}")
 
-    @province_whitelist.command("添加")
-    async def add_to_whitelist(self, event: AstrMessageEvent, province: str | None = None):
-        """添加省份到白名单"""
+    @earthquake_whitelist.command("添加")
+    async def add_to_earthquake_whitelist(self, event: AstrMessageEvent, province: str | None = None):
+        """添加省份到地震/海啸白名单"""
         try:
-            # 检查参数
             if not province:
                 yield event.plain_result(
                     "❌ 用法错误\n\n"
-                    "正确用法：/灾害预警白名单 添加 [省份名称]\n\n"
+                    "正确用法：/灾害预警地震白名单 添加 [省份名称]\n\n"
                     "示例：\n"
-                    "• /灾害预警白名单 添加 四川\n"
-                    "• /灾害预警白名单 添加 云南"
+                    "• /灾害预警地震白名单 添加 四川\n"
+                    "• /灾害预警地震白名单 添加 云南"
                 )
                 return
 
             province = province.strip()
-            
-            # 验证省份名称
             valid_provinces = [
                 "北京", "天津", "河北", "山西", "内蒙古",
                 "辽宁", "吉林", "黑龙江", "上海", "江苏",
@@ -519,113 +522,256 @@ class DisasterWarningPlugin(Star):
                 )
                 return
             
-            # 获取当前白名单
-            whitelist = self.config.get("province_whitelist", [])
-            
+            whitelist = self.config.get("earthquake_province_whitelist", [])
             if province in whitelist:
-                yield event.plain_result(f"⚠️ 省份 {province} 已在白名单中")
+                yield event.plain_result(f"⚠️ 省份 {province} 已在地震白名单中")
                 return
             
-            # 添加到白名单
             whitelist.append(province)
-            self.config["province_whitelist"] = whitelist
+            self.config["earthquake_province_whitelist"] = whitelist
             
-            # 更新消息管理器的白名单
             if self.disaster_service and self.disaster_service.message_manager:
-                self.disaster_service.message_manager.province_whitelist = whitelist
+                self.disaster_service.message_manager.earthquake_province_whitelist = whitelist
             
             yield event.plain_result(
                 f"✅ 成功添加省份：{province}\n\n"
-                f"当前白名单（{len(whitelist)}个省份）：\n"
+                f"当前地震/海啸白名单（{len(whitelist)}个省份）：\n"
                 f"{', '.join(whitelist)}\n\n"
-                f"💡 说明：只推送白名单中省份的预警消息"
+                f"💡 说明：只推送白名单中省份的地震和海啸预警"
             )
             
-            logger.info(f"[灾害预警] 添加省份到白名单: {province}")
+            logger.info(f"[灾害预警] 添加省份到地震白名单: {province}")
 
         except Exception as e:
-            logger.error(f"[灾害预警] 添加白名单失败: {e}")
-            yield event.plain_result(f"❌ 添加白名单失败: {str(e)}")
+            logger.error(f"[灾害预警] 添加地震白名单失败: {e}")
+            yield event.plain_result(f"❌ 添加地震白名单失败: {str(e)}")
 
-    @province_whitelist.command("删除")
-    async def remove_from_whitelist(self, event: AstrMessageEvent, province: str | None = None):
-        """从白名单中删除省份"""
+    @earthquake_whitelist.command("删除")
+    async def remove_from_earthquake_whitelist(self, event: AstrMessageEvent, province: str | None = None):
+        """从地震/海啸白名单中删除省份"""
         try:
-            # 检查参数
             if not province:
                 yield event.plain_result(
                     "❌ 用法错误\n\n"
-                    "正确用法：/灾害预警白名单 删除 [省份名称]\n\n"
+                    "正确用法：/灾害预警地震白名单 删除 [省份名称]\n\n"
                     "示例：\n"
-                    "• /灾害预警白名单 删除 四川\n"
-                    "• /灾害预警白名单 删除 云南"
+                    "• /灾害预警地震白名单 删除 四川"
                 )
                 return
 
             province = province.strip()
-            
-            # 获取当前白名单
-            whitelist = self.config.get("province_whitelist", [])
+            whitelist = self.config.get("earthquake_province_whitelist", [])
             
             if province not in whitelist:
-                yield event.plain_result(f"⚠️ 省份 {province} 不在白名单中")
+                yield event.plain_result(f"⚠️ 省份 {province} 不在地震白名单中")
                 return
             
-            # 从白名单中删除
             whitelist.remove(province)
-            self.config["province_whitelist"] = whitelist
+            self.config["earthquake_province_whitelist"] = whitelist
             
-            # 更新消息管理器的白名单
             if self.disaster_service and self.disaster_service.message_manager:
-                self.disaster_service.message_manager.province_whitelist = whitelist
+                self.disaster_service.message_manager.earthquake_province_whitelist = whitelist
             
             if whitelist:
                 result_text = (
                     f"✅ 成功删除省份：{province}\n\n"
-                    f"当前白名单（{len(whitelist)}个省份）：\n"
+                    f"当前地震/海啸白名单（{len(whitelist)}个省份）：\n"
                     f"{', '.join(whitelist)}"
                 )
             else:
                 result_text = (
                     f"✅ 成功删除省份：{province}\n\n"
-                    f"白名单已清空，将推送所有省份的预警消息"
+                    f"地震/海啸白名单已清空，将推送所有省份的地震和海啸预警"
                 )
             
             yield event.plain_result(result_text)
-            
-            logger.info(f"[灾害预警] 从白名单删除省份: {province}")
+            logger.info(f"[灾害预警] 从地震白名单删除省份: {province}")
 
         except Exception as e:
-            logger.error(f"[灾害预警] 删除白名单失败: {e}")
-            yield event.plain_result(f"❌ 删除白名单失败: {str(e)}")
+            logger.error(f"[灾害预警] 删除地震白名单失败: {e}")
+            yield event.plain_result(f"❌ 删除地震白名单失败: {str(e)}")
 
-    @province_whitelist.command("清空")
-    async def clear_whitelist(self, event: AstrMessageEvent):
-        """清空省份白名单"""
+    @earthquake_whitelist.command("清空")
+    async def clear_earthquake_whitelist(self, event: AstrMessageEvent):
+        """清空地震/海啸白名单"""
         try:
-            whitelist = self.config.get("province_whitelist", [])
-            
+            whitelist = self.config.get("earthquake_province_whitelist", [])
             if not whitelist:
-                yield event.plain_result("⚠️ 白名单已经是空的")
+                yield event.plain_result("⚠️ 地震/海啸白名单已经是空的")
                 return
             
-            # 清空白名单
-            self.config["province_whitelist"] = []
-            
-            # 更新消息管理器的白名单
+            self.config["earthquake_province_whitelist"] = []
             if self.disaster_service and self.disaster_service.message_manager:
-                self.disaster_service.message_manager.province_whitelist = []
+                self.disaster_service.message_manager.earthquake_province_whitelist = []
             
             yield event.plain_result(
-                "✅ 白名单已清空\n\n"
-                "将推送所有省份的预警消息"
+                "✅ 地震/海啸白名单已清空\n\n"
+                "将推送所有省份的地震和海啸预警"
             )
-            
-            logger.info("[灾害预警] 清空省份白名单")
+            logger.info("[灾害预警] 清空地震白名单")
 
         except Exception as e:
-            logger.error(f"[灾害预警] 清空白名单失败: {e}")
-            yield event.plain_result(f"❌ 清空白名单失败: {str(e)}")
+            logger.error(f"[灾害预警] 清空地震白名单失败: {e}")
+            yield event.plain_result(f"❌ 清空地震白名单失败: {str(e)}")
+
+    @filter.command_group("灾害预警气象白名单")
+    async def weather_whitelist(self, event: AstrMessageEvent):
+        """气象预警省份白名单管理"""
+        pass
+
+    @weather_whitelist.command("查看")
+    async def view_weather_whitelist(self, event: AstrMessageEvent):
+        """查看气象预警省份白名单"""
+        try:
+            whitelist = self.config.get("weather_province_whitelist", [])
+            
+            if not whitelist:
+                yield event.plain_result(
+                    "📋 气象预警白名单状态：未启用\n\n"
+                    "当前不进行省份过滤，推送所有省份的气象预警。\n\n"
+                    "💡 提示：\n"
+                    "• 使用 /灾害预警气象白名单 添加 [省份] 来添加省份\n"
+                    "• 例如：/灾害预警气象白名单 添加 广东\n"
+                    "• 白名单启用后，无法识别省份的事件将被过滤"
+                )
+            else:
+                whitelist_text = "📋 气象预警省份白名单\n\n"
+                whitelist_text += f"✅ 白名单已启用，当前有 {len(whitelist)} 个省份：\n\n"
+                for i, province in enumerate(whitelist, 1):
+                    whitelist_text += f"  {i}. {province}\n"
+                whitelist_text += "\n💡 说明：\n"
+                whitelist_text += "• 只推送白名单中省份的气象预警\n"
+                whitelist_text += "• 无法识别省份的事件将被过滤"
+                
+                yield event.plain_result(whitelist_text)
+
+        except Exception as e:
+            logger.error(f"[灾害预警] 查看气象白名单失败: {e}")
+            yield event.plain_result(f"❌ 查看气象白名单失败: {str(e)}")
+
+    @weather_whitelist.command("添加")
+    async def add_to_weather_whitelist(self, event: AstrMessageEvent, province: str | None = None):
+        """添加省份到气象白名单"""
+        try:
+            if not province:
+                yield event.plain_result(
+                    "❌ 用法错误\n\n"
+                    "正确用法：/灾害预警气象白名单 添加 [省份名称]\n\n"
+                    "示例：\n"
+                    "• /灾害预警气象白名单 添加 广东\n"
+                    "• /灾害预警气象白名单 添加 浙江"
+                )
+                return
+
+            province = province.strip()
+            valid_provinces = [
+                "北京", "天津", "河北", "山西", "内蒙古",
+                "辽宁", "吉林", "黑龙江", "上海", "江苏",
+                "浙江", "安徽", "福建", "江西", "山东",
+                "河南", "湖北", "湖南", "广东", "广西",
+                "海南", "重庆", "四川", "贵州", "云南",
+                "西藏", "陕西", "甘肃", "青海", "宁夏",
+                "新疆", "台湾", "香港", "澳门"
+            ]
+            
+            if province not in valid_provinces:
+                yield event.plain_result(
+                    f"❌ 无效的省份名称：{province}\n\n"
+                    f"支持的省份：\n{', '.join(valid_provinces)}"
+                )
+                return
+            
+            whitelist = self.config.get("weather_province_whitelist", [])
+            if province in whitelist:
+                yield event.plain_result(f"⚠️ 省份 {province} 已在气象白名单中")
+                return
+            
+            whitelist.append(province)
+            self.config["weather_province_whitelist"] = whitelist
+            
+            if self.disaster_service and self.disaster_service.message_manager:
+                self.disaster_service.message_manager.weather_province_whitelist = whitelist
+            
+            yield event.plain_result(
+                f"✅ 成功添加省份：{province}\n\n"
+                f"当前气象白名单（{len(whitelist)}个省份）：\n"
+                f"{', '.join(whitelist)}\n\n"
+                f"💡 说明：只推送白名单中省份的气象预警"
+            )
+            
+            logger.info(f"[灾害预警] 添加省份到气象白名单: {province}")
+
+        except Exception as e:
+            logger.error(f"[灾害预警] 添加气象白名单失败: {e}")
+            yield event.plain_result(f"❌ 添加气象白名单失败: {str(e)}")
+
+    @weather_whitelist.command("删除")
+    async def remove_from_weather_whitelist(self, event: AstrMessageEvent, province: str | None = None):
+        """从气象白名单中删除省份"""
+        try:
+            if not province:
+                yield event.plain_result(
+                    "❌ 用法错误\n\n"
+                    "正确用法：/灾害预警气象白名单 删除 [省份名称]\n\n"
+                    "示例：\n"
+                    "• /灾害预警气象白名单 删除 广东"
+                )
+                return
+
+            province = province.strip()
+            whitelist = self.config.get("weather_province_whitelist", [])
+            
+            if province not in whitelist:
+                yield event.plain_result(f"⚠️ 省份 {province} 不在气象白名单中")
+                return
+            
+            whitelist.remove(province)
+            self.config["weather_province_whitelist"] = whitelist
+            
+            if self.disaster_service and self.disaster_service.message_manager:
+                self.disaster_service.message_manager.weather_province_whitelist = whitelist
+            
+            if whitelist:
+                result_text = (
+                    f"✅ 成功删除省份：{province}\n\n"
+                    f"当前气象白名单（{len(whitelist)}个省份）：\n"
+                    f"{', '.join(whitelist)}"
+                )
+            else:
+                result_text = (
+                    f"✅ 成功删除省份：{province}\n\n"
+                    f"气象白名单已清空，将推送所有省份的气象预警"
+                )
+            
+            yield event.plain_result(result_text)
+            logger.info(f"[灾害预警] 从气象白名单删除省份: {province}")
+
+        except Exception as e:
+            logger.error(f"[灾害预警] 删除气象白名单失败: {e}")
+            yield event.plain_result(f"❌ 删除气象白名单失败: {str(e)}")
+
+    @weather_whitelist.command("清空")
+    async def clear_weather_whitelist(self, event: AstrMessageEvent):
+        """清空气象白名单"""
+        try:
+            whitelist = self.config.get("weather_province_whitelist", [])
+            if not whitelist:
+                yield event.plain_result("⚠️ 气象白名单已经是空的")
+                return
+            
+            self.config["weather_province_whitelist"] = []
+            if self.disaster_service and self.disaster_service.message_manager:
+                self.disaster_service.message_manager.weather_province_whitelist = []
+            
+            yield event.plain_result(
+                "✅ 气象白名单已清空\n\n"
+                "将推送所有省份的气象预警"
+            )
+            logger.info("[灾害预警] 清空气象白名单")
+
+        except Exception as e:
+            logger.error(f"[灾害预警] 清空气象白名单失败: {e}")
+            yield event.plain_result(f"❌ 清空气象白名单失败: {str(e)}")
 
     def _format_source_name(self, source_key: str) -> str:
         """格式化数据源名称 - 新的细粒度配置结构"""
