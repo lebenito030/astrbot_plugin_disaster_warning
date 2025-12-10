@@ -485,12 +485,11 @@ class DisasterWarningPlugin(Star):
             yield event.plain_result(f"❌ 查看白名单失败: {str(e)}")
 
     @province_whitelist.command("添加")
-    async def add_to_whitelist(self, event: AstrMessageEvent):
+    async def add_to_whitelist(self, event: AstrMessageEvent, province: str | None = None):
         """添加省份到白名单"""
         try:
-            # 获取参数
-            args = event.message_str.split(maxsplit=3)
-            if len(args) < 4:
+            # 检查参数
+            if not province:
                 yield event.plain_result(
                     "❌ 用法错误\n\n"
                     "正确用法：/灾害预警白名单 添加 [省份名称]\n\n"
@@ -500,7 +499,7 @@ class DisasterWarningPlugin(Star):
                 )
                 return
 
-            province = args[3].strip()
+            province = province.strip()
             
             # 验证省份名称
             valid_provinces = [
@@ -549,12 +548,11 @@ class DisasterWarningPlugin(Star):
             yield event.plain_result(f"❌ 添加白名单失败: {str(e)}")
 
     @province_whitelist.command("删除")
-    async def remove_from_whitelist(self, event: AstrMessageEvent):
+    async def remove_from_whitelist(self, event: AstrMessageEvent, province: str | None = None):
         """从白名单中删除省份"""
         try:
-            # 获取参数
-            args = event.message_str.split(maxsplit=3)
-            if len(args) < 4:
+            # 检查参数
+            if not province:
                 yield event.plain_result(
                     "❌ 用法错误\n\n"
                     "正确用法：/灾害预警白名单 删除 [省份名称]\n\n"
@@ -564,7 +562,7 @@ class DisasterWarningPlugin(Star):
                 )
                 return
 
-            province = args[3].strip()
+            province = province.strip()
             
             # 获取当前白名单
             whitelist = self.config.get("province_whitelist", [])
