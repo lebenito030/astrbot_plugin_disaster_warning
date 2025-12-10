@@ -171,6 +171,12 @@
       }
     }
   },
+  "province_whitelist": {
+    "description": "省份白名单过滤",
+    "type": "list",
+    "hint": "只推送白名单中省份的预警消息。留空则不过滤。示例：北京、上海、广东、四川等",
+    "default": []
+  },
   "earthquake_thresholds": {
     "description": "地震信息过滤阈值 (全局配置) - ",
     "type": "object",

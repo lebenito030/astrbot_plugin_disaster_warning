@@ -56,6 +56,9 @@ class MessagePushManager:
         # 阈值配置
         self.thresholds = config.get("earthquake_thresholds", {})
 
+        # 省份白名单配置
+        self.province_whitelist = config.get("province_whitelist", [])
+
         # 目标会话
         self.target_sessions = self._parse_target_sessions()
 
@@ -129,6 +132,13 @@ class MessagePushManager:
                 return False
         else:
             logger.warning(f"[灾害预警] 事件 {event_id} 时间信息缺失，继续其他检查")
+
+        # 省份白名单过滤
+        if not self._check_province_whitelist(event):
+            logger.info(
+                f"[灾害预警] 事件 {event_id} 未通过省份白名单检查"
+            )
+            return False
 
         # 检查阈值
         if not self._check_thresholds(event):
@@ -362,6 +372,84 @@ class MessagePushManager:
             # 这里可以实现更复杂的逻辑，基于事件时间和当前时间的差值
 
         return False
+
+    def _check_province_whitelist(self, event: DisasterEvent) -> bool:
+        """检查省份白名单 - 如果配置了白名单，只推送白名单中省份的消息"""
+        # 如果白名单为空，不进行过滤
+        if not self.province_whitelist:
+            return True
+
+        # 提取省份信息
+        province = self._extract_province(event)
+        
+        # 如果无法提取省份信息，默认通过（避免误过滤）
+        if not province:
+            logger.debug(
+                f"[灾害预警] 事件 {event.id} 无法提取省份信息，默认通过白名单检查"
+            )
+            return True
+
+        # 检查省份是否在白名单中（支持模糊匹配）
+        for allowed_province in self.province_whitelist:
+            if allowed_province in province or province in allowed_province:
+                logger.debug(
+                    f"[灾害预警] 事件 {event.id} 省份 '{province}' 在白名单中，通过检查"
+                )
+                return True
+
+        logger.info(
+            f"[灾害预警] 事件 {event.id} 省份 '{province}' 不在白名单 {self.province_whitelist} 中，过滤"
+        )
+        return False
+
+    def _extract_province(self, event: DisasterEvent) -> str | None:
+        """从事件中提取省份信息"""
+        if isinstance(event.data, EarthquakeData):
+            earthquake = event.data
+            
+            # 方法1：直接使用province字段（如果有）
+            if earthquake.province:
+                return earthquake.province
+            
+            # 方法2：从place_name中提取省份（适用于中国地震）
+            if earthquake.place_name:
+                place_name = earthquake.place_name
+                # 尝试从地名中提取省份
+                # 例如："四川凉山州盐源县" -> "四川"
+                # "新疆巴音郭楞州若羌县" -> "新疆"
+                province_list = [
+                    "北京", "天津", "河北", "山西", "内蒙古",
+                    "辽宁", "吉林", "黑龙江", "上海", "江苏",
+                    "浙江", "安徽", "福建", "江西", "山东",
+                    "河南", "湖北", "湖南", "广东", "广西",
+                    "海南", "重庆", "四川", "贵州", "云南",
+                    "西藏", "陕西", "甘肃", "青海", "宁夏",
+                    "新疆", "台湾", "香港", "澳门"
+                ]
+                
+                for province in province_list:
+                    if place_name.startswith(province):
+                        return province
+                    
+        elif isinstance(event.data, WeatherAlarmData):
+            # 气象预警通常在标题中包含省份信息
+            weather = event.data
+            if weather.headline:
+                province_list = [
+                    "北京", "天津", "河北", "山西", "内蒙古",
+                    "辽宁", "吉林", "黑龙江", "上海", "江苏",
+                    "浙江", "安徽", "福建", "江西", "山东",
+                    "河南", "湖北", "湖南", "广东", "广西",
+                    "海南", "重庆", "四川", "贵州", "云南",
+                    "西藏", "陕西", "甘肃", "青海", "宁夏",
+                    "新疆", "台湾", "香港", "澳门"
+                ]
+                
+                for province in province_list:
+                    if province in weather.headline or province in weather.title:
+                        return province
+        
+        return None
 
     def _check_thresholds(self, event: DisasterEvent) -> bool:
         """检查阈值"""
