@@ -174,14 +174,26 @@
   "earthquake_province_whitelist": {
     "description": "地震/海啸省份白名单",
     "type": "list",
-    "hint": "只推送白名单中省份的地震和海啸预警。留空则不过滤。白名单启用时，无法识别省份的事件（如国外地震）将被过滤。示例：北京、四川、云南、西藏等",
+    "hint": "只推送白名单中省份的地震和海啸预警。留空时行为由下方开关控制。示例：北京、四川、云南、西藏等",
     "default": []
+  },
+  "earthquake_whitelist_include_international": {
+    "description": "地震白名单为空时是否包含国外事件",
+    "type": "bool",
+    "hint": "当地震白名单为空时：开启=推送所有地震（含国外），关闭=只推送国内地震",
+    "default": false
   },
   "weather_province_whitelist": {
     "description": "气象预警省份白名单",
     "type": "list",
-    "hint": "只推送白名单中省份的气象预警。留空则不过滤。白名单启用时，无法识别省份的事件将被过滤。示例：北京、广东、浙江、江苏等",
+    "hint": "只推送白名单中省份的气象预警。留空时行为由下方开关控制。示例：北京、广东、浙江、江苏等",
     "default": []
+  },
+  "weather_whitelist_include_international": {
+    "description": "气象白名单为空时是否包含国外事件",
+    "type": "bool",
+    "hint": "当气象白名单为空时：开启=推送所有气象预警（含国外），关闭=只推送国内气象预警",
+    "default": false
   },
   "earthquake_thresholds": {
     "description": "地震信息过滤阈值 (全局配置) - ",

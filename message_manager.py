@@ -59,6 +59,9 @@ class MessagePushManager:
         # 省份白名单配置（分为地震/海啸和气象两种）
         self.earthquake_province_whitelist = config.get("earthquake_province_whitelist", [])
         self.weather_province_whitelist = config.get("weather_province_whitelist", [])
+        # 白名单为空时是否包含国外事件的开关
+        self.earthquake_whitelist_include_international = config.get("earthquake_whitelist_include_international", False)
+        self.weather_whitelist_include_international = config.get("weather_whitelist_include_international", False)
 
         # 目标会话
         self.target_sessions = self._parse_target_sessions()
@@ -376,27 +379,46 @@ class MessagePushManager:
 
     def _check_province_whitelist(self, event: DisasterEvent) -> bool:
         """检查省份白名单 - 如果配置了白名单，只推送白名单中省份的消息"""
-        # 根据事件类型选择对应的白名单
+        # 根据事件类型选择对应的白名单和开关
         if isinstance(event.data, WeatherAlarmData):
             whitelist = self.weather_province_whitelist
+            include_international = self.weather_whitelist_include_international
             event_type = "气象预警"
         else:  # EarthquakeData 和 TsunamiData
             whitelist = self.earthquake_province_whitelist
+            include_international = self.earthquake_whitelist_include_international
             event_type = "地震/海啸"
         
-        # 如果白名单为空，不进行过滤
-        if not whitelist:
-            return True
-
         # 提取省份信息
         province = self._extract_province(event)
         
-        # 如果无法提取省份信息，在白名单启用时默认过滤（避免推送国外事件）
+        # 如果无法提取省份信息（可能是国外事件）
         if not province:
-            logger.info(
-                f"[灾害预警] {event_type}事件 {event.id} 无法提取省份信息，白名单已启用，默认过滤"
+            # 白名单为空时，根据开关决定是否推送
+            if not whitelist:
+                if include_international:
+                    logger.debug(
+                        f"[灾害预警] {event_type}事件 {event.id} 无法提取省份信息，白名单为空且已开启国际事件，通过检查"
+                    )
+                    return True
+                else:
+                    logger.info(
+                        f"[灾害预警] {event_type}事件 {event.id} 无法提取省份信息（可能是国外事件），白名单为空但未开启国际事件，过滤"
+                    )
+                    return False
+            # 白名单不为空时，无法提取省份的事件一律过滤
+            else:
+                logger.info(
+                    f"[灾害预警] {event_type}事件 {event.id} 无法提取省份信息，白名单已启用，过滤"
+                )
+                return False
+        
+        # 如果白名单为空，通过省份检查（推送所有国内事件）
+        if not whitelist:
+            logger.debug(
+                f"[灾害预警] {event_type}事件 {event.id} 白名单未启用，省份 '{province}' 通过检查"
             )
-            return False
+            return True
 
         # 检查省份是否在白名单中（支持模糊匹配）
         for allowed_province in whitelist:
